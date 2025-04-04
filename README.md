@@ -41,10 +41,6 @@ A bitmap is simply an array of bytes which represents the array of pages that ma
 - Allocating a number of bytes means first working out how many pages are needed, and then look for this number of contiguous pages in memory, using the bitmap. The result of the allocation is that the bitmap contains a contiguous sequence of `1` bits. 
 - Dellocating a number of bytes means setting all the corresponding bits in the bitmap to `0`.
 
-### Python reference implementation
-
-I provide [a Python reference implementation](https://git.dcs.gla.ac.uk/wim/cans/-/blob/main/AE1-part1-code/DynamicMemoryAllocReference.py?ref_type=heads) of `malloc()` and `free()` as defined in this exercise. This serves as the functional specification. I also provide [an Uxntal code skeleton](https://git.dcs.gla.ac.uk/wim/cans/-/blob/main/AE1-part1-code/dynamic-memory-alloc-skeleton.tal?ref_type=heads) with a suitable structure and helper functions for printing as well as an implementation of the allocation map code. 
-
 ### Your task
 
 Your task is:
@@ -64,35 +60,6 @@ Your task is:
             <byte-sized index> set_bit ( sets the bit to 1 )
             <byte-sized index> clear_bit ( clears the bit to 0)
 
-- to provide a unit test program with unit tests for every subroutine used in your program. I provide [a Python reference implementation](https://git.dcs.gla.ac.uk/wim/cans/-/blob/main/AE1-part1-code/dynamicMemoryAllocReference-unit-tests.py?ref_type=heads) and [an Uxntal implementation](https://git.dcs.gla.ac.uk/wim/cans/-/blob/main/AE1-part1-code/dynamic-memory-alloc-unit-tests.tal?ref_type=heads) which does not contain the actual implementations.
-- to provide an integration test program demonstrating that your `malloc()` and `free()` work as expected. I provide [a Python reference implementation](https://git.dcs.gla.ac.uk/wim/cans/-/blob/main/AE1-part1-code/dynamicMemoryAllocReference-integration-tests.py?ref_type=heads) and [an Uxntal implementation](https://git.dcs.gla.ac.uk/wim/cans/-/blob/main/AE1-part1-code/dynamic-memory-alloc-integration-tests.tal?ref_type=heads) which does not contain the actual implementations.
-
-### Marking scheme
-
-Total marks out of 50:
-
-* [2 marks] Identifying information (in the form of comments at the beginning of the program). The first comments identify the program, giving your name and student ID, and saying what the program does. These may be the easiest marks you'll ever get!
-* [3 marks] Your status report. State clearly whether the program works. If parts are not working, say so. 
-* [5 marks] The bitmap and its low-level API: get-bit, set-bit, clear-bit (Uxntal code)
-* [5 marks] Unit tests for the bitmap and its low-level API: get-bit, set-bit, clear-bit, mask_clear, mask_set (Uxntal code)
-* [5 marks] Unit tests for alloc_sz_is_free_at_idx, claim_alloc_sz_at_idx, free_alloc_sz_at_idx (Uxntal code)
-* [5 marks] The `malloc()` routine (including any auxiliary routines) (Uxntal code)
-* [5 marks] The `free()` routine (including any auxiliary routines) (Uxntal code)
-* [5 marks] Unit tests for malloc and free (Uxntal code)
-* [5 marks] The code assembles and executes
-* [10 marks] Integration tests for `malloc` and `free`. 
-
-### What to submit
-
-Please submit a zip file containing two Uxntal files: `dynamic-memory-alloc.tal` and `dynamic-memory-alloc-decl.tal`, and a `README` file or `README.md` file which contains your brief status report (a few hundred words is enough) as a text or markdown file.
-
-The name of the zip file should be `CANS2025-AE1-partA-`*your-student-id*`*.zip`.
-
-Note: if you don't submit exactly what is asked, 2 bands will be deduced as per School policy. 
-
-### Due date
-
-11 April 2025 via the Moodle submission link
 
 
      
