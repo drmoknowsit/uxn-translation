@@ -37,32 +37,48 @@
         #07 .error STZ
         #0000 JMP2r 
     &cont2
-    #0000 .idx STZ2 ( n_bytes* ) ( idx=0 )
+    #0000 ;&idx STA2 ( n_bytes* ) ( idx=0 )
 
-    !todo ( loop over idx )
-
-    ( the following snippets are for error handling )
-            
+    ( loop over idx )
+    ;&idx LDA2 MAX_ALLOC_SZ EQU2 not ,&cont3 JCN
+        POP2 ( 0001 )
+        #0000 JMP2r
+    &cont3
+        POP2  ( 0000 )
+        &loop
+        ;&idx LDA2
+        .n_pages LDZ2
+        alloc_sz_free_at_idx
+        #0001 EQU2 not ,&next JCN
+            POP2  ( clear 0001 )
             ( snippet: error > 0 )
             .error LDZ #00 EQU ,&cont3 JCN
-                #0000 JMP2r
+            #0000 JMP2r
             &cont3
-            
-            ( snippet: n_allocs == MAX_N_ALLOCS )
-            ;n_allocs LDA2 DUP2 MAX_N_ALLOCS NEQ2 ,&cont4 JCN
-                #05 .error STZ
-                #0000 JMP2r
+                ;&idx LDA2 .n_pages LDZ2
+                claim_alloc_sz_at_idx
+                ( snippet: n_allocs == MAX_N_ALLOCS )
+                ;n_allocs LDA2 DUP2 MAX_N_ALLOCS NEQ2 ,&cont4 JCN
+                    #05 .error STZ
+                    #0000 JMP2r
             &cont4
-
-    ( snippet: allocated[ptr]=n_bytes )
-        insert-ptr POP ( lazy, ignore return status )
+                ;n_allocs LDA2 #0001 ADD2 ;n_allocs STA2
+                ;&idx LDA2 PAGE_SZ MUL2 DMEM_START ADD2 ;&ptr STA2k
+                ( snippet: allocated[ptr]=n_bytes )
+                insert-ptr POP ( lazy, ignore return status )
+                JMP2r
+            &next
+                ;&idx LDA2 #0001 ADD2 ;&idx STA2 &loop JMP
 JMP2r
+@idx $2
+@ptr $2
+
 
 
 @free ( ptr* -- )
     ( You are free to change this part but there should be no need )
     DUP2 ;&ptr STA2 ( ptr* )
-    DMEM_START SUB2 PAGE_SZ DIV2 ( idx* = (ptr-DMEM_START) // PAGE_SZ )
+    DMEM_START SUB2 PAGE_SZ DIV2 ;&idx STA2k ( idx* = (ptr-DMEM_START) // PAGE_SZ )
     ( if idx<0 or idx>N_PAGES-1: error=2 )
     DUP2 DUP2 ( idx* idx* idx* )
     #0000 LTH2 ( idx* idx* idx<0 )
@@ -82,118 +98,127 @@ JMP2r
     DUP2 #0000 EQU2 ,&error6 JCN ( idx* n_bytes* )
     #00 .error STZ
 
-    !todo
-
-    ( snippet: )
-    ( this corresponds to 
+    #0001 SUB2 PAGE_SZ #0001 ADD2 DIV2 .n_pages STZ2
+    ;&idx LDA2 .n_pages LDZ2
+    free_alloc_sz_at_idx
+    ( this corresponds to
         del allocated[ptr]
     )
     ;&ptr LDA2 delete-ptr
-
+    ;n_allocs LDA2 #0001 SUB2 ;n_allocs STA2
     ( You are free to change this part but there should be no need )
     JMP2r
     &error6 
         #06 .error STZ 
     JMP2r
 &ptr $2
+&idx $2
 
 
 ( allocation size is in pages )
 ( idx:16 alloc_sz:16 -- 00 or 01 )
 @alloc_sz_is_free_at_idx ( idx* alloc_sz* -: b )
-    .idx STZ2
+    .idx STZ2 ;alloc_sz STA2
     ;alloc_sz LDA2 ;end_alloc STA2k ( alloc_sz loaded, stored at end_alloc and kept on stack )
     ( snippet: if idx+jj>N_PAGES-1: error=4 )
     N_PAGES #01 SUB GTH ,&ret_0_error4 JCN ,&next JMP ( stack: end_alloc N_PAGES-1 --> end_alloc N_PAGES-1 0 or 1 )
     &next
         POP2 POP2 POP2 ( stack: empty )
-        ;end_alloc LDA2 ;start LDA2 NEQ ,&loop JCN ,&done JMP    ( stack: 0000 end_alloc 01 or 00, if 01 jump to loop, else jump to all_free )
+        ;end_alloc LDA2 ;start LDA2 NEQ ,&loop JCN ,&done JMP    ( stack: 01 or 00, if 01 jump to loop, else jump to all_free )
 
     &ret_0_error4
         #04 .error STZ
         POP2 POP2 POP2 #00 JMP2r
 
     &loop  ( stack: 0000 end_alloc 01 )
-        get_bit EQU2 ,&not_free JCN .&next2 JMP ( stack: end_alloc 0000 01 bit 00 or 01 )
-        &next2 (stack: end_alloc 0000 01 bit 00
-            POP2 POP2 POP2 ( stack: end_alloc 0000 )
-            .idx LDZ2 INC2 .idx STZ2 ( stack: 0000 end_alloc )
-            #01 ADD2 ( stack: end_alloc start position incremented)
-            NEQ ,&loop JCN     ( stack: end_alloc start 01 or 00, if 01 jump to loop, else jump to done )
+        get_bit EQU2 ,&not_free JCN .&next2 JMP ( stack: 0000 or 0001 )
+        &next2 (stack: 0000 )
+            POP2 ( stack: )
+            .idx LDZ2 INC2 .idx STZ2 ( stack:  )
+            ;end_alloc LDA2 ;start LDA2 #0001 ADD2 ;start STA2 ( stack: end_alloc start position incremented)
+            NEQ ,&loop JCN     ( stack: 01 or 00, if 01 jump to loop, else jump to all_free )
             ,&all_free JMP
 
-    &not_free ( stack: end_alloc 0000 01 bit 01)
-        POP2 POP2 POP2 POP2 POP2
-        #00 ( stack: 00 )
+    &not_free ( stack: 01)
+        POP2
+        #0000 ( stack: 00 )
         JMP2r
 
-    &done ( stack: 0000 end_alloc 00 )
-        POP2 POP2 POP2
-        #00 ( stack: 0 )
+    &done ( stack: 00 )
+        POP2
+        #0000 ( stack: 0 )
         JMP2r
 
-    &all_free ( stack: end_alloc start 00 )
-        POP2 POP2 POP2
-        #01
+    &all_free ( stack: 00 )
+        POP2
+        #0001
         JMP2r ( stack: 01 )
     JMP2r
     @start 0000
+    @alloc_sz $2
     @end_alloc $2
+
 
 
 
 ( allocation size is in pages )
 @claim_alloc_sz_at_idx ( idx* alloc_sz* -: )
-    .idx STZ2
+    .idx STZ2 ;alloc_sz STA2
     ;alloc_sz LDA2 ;end_alloc STA2k ( alloc_sz loaded, stored at end_alloc and kept on stack )
-    ;start LDA2 NEQ ,&loop JCN ,&done JMP    ( stack: 0000 end_alloc 01 or 00, if 01 jump to loop, else jump to all_free )
+    ;start LDA2 NEQ ,&loop JCN ,&done JMP    ( stack: 01 or 00, if 01 jump to loop, else jump to done )
 
-    &loop  ( stack: end_alloc start value 01 )
-        POP2 ( stack: end_alloc start value )
-        set_bit ( stack: end_alloc start value )
-       .idx  LDZ2 INC2 .idx STZ2 ( stack: end_alloc start value )
-        #01 ADD2 ( stack: end_alloc start position incremented)
-        NEQ ,&loop JCN  ( stack: end_alloc start 01 or 00, if 01 jump to loop, else jump to all_set )
+    &loop  ( stack: 01 )
+        POP2 ( stack:  )
+        .idx LDZ2
+        set_bit ( stack:  )
+       .idx LDZ2 INC2 .idx STZ2 ( stack:  )
+        ;end_alloc LAD2 ;start LDA2 #0001 ADD2 ;start STA2k ( stack: end_alloc start position incremented)
+        NEQ ,&loop JCN  ( stack: 01 or 00, if 01 jump to loop, else jump to all_set )
         ,&all_set JMP
 
-    &all_set ( stack: end_alloc start value 00)
-        POP2 POP2 POP2
+    &all_set ( stack:  00)
+        POP2
         JMP2r
 
-    &done ( stack: 0000 end_alloc 00 )
-        POP2 POP2 POP2
+    &done ( stack: 00 )
+        POP2
         JMP2r
 
     JMP2r
     @start 0000
+    @alloc_sz $2
     @end_alloc $2
+
 
 
 ( allocation size is in pages )
 @free_alloc_sz_at_idx ( idx* alloc_sz* -: ) 
-    .idx STZ2
+    .idx STZ2 ;alloc_sz STA2
     ;alloc_sz LDA2 ;end_alloc STA2k ( alloc_sz loaded, stored at end_alloc and kept on stack )
-    ;start LDA2 NEQ ,&loop JCN ,&done JMP    ( stack: 0000 end_alloc 01 or 00, if 01 jump to loop, else jump to all_free )
+    ;start LDA2 NEQ ,&loop JCN ,&done JMP    ( stack: 01 or 00, if 01 jump to loop, else jump to done )
 
-    &loop  ( stack: end_alloc start value 01 )
-        POP2 ( stack: end_alloc start value )
-        clear_bit ( stack: end_alloc start value )
-       .idx  LDZ2 INC2 .idx STZ2 ( stack: end_alloc start value )
-        #01 ADD2 ( stack: end_alloc start position incremented)
-        NEQ ,&loop JCN  ( stack: end_alloc start 01 or 00, if 01 jump to loop, else jump to all_set )
+    &loop  ( stack: 01 )
+        POP2 ( stack:  )
+        .idx LDZ2
+        clear_bit ( stack:  )
+        .idx LDZ2 INC2 .idx STZ2 ( stack:  )
+        ;end_alloc LAD2 ;start LDA2 #0001 ADD2 ;start STA2k ( stack: end_alloc start position incremented)
+        NEQ ,&loop JCN  ( stack:  01 or 00, if 01 jump to loop, else jump to all_set )
         ,&all_set JMP
 
     &all_set ( stack: end_alloc start value 00)
-        POP2 POP2 POP2
+        POP2
         JMP2r
 
-    &done ( stack: 0000 end_alloc 00 )
-        POP2 POP2 POP2
+    &done ( stack: 00 )
+        POP2
         JMP2r
 
     JMP2r
     @start 0000
+    @alloc_sz $2
     @end_alloc $2
+    @idx $2
 
 
 @get_bit ( idx -- bit )

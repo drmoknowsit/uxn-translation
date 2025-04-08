@@ -1,0 +1,212 @@
+@get_bit ( idx -- bit )
+find_bit
+.byte_idx LDZ2 N_PAGES #0001 SUB2 GTH2 not ,&cont JCN
+( loads byte_idx, loads N_PAGES and subtracts 1. Checks if byte_idx is greater )
+            #04 .error STZ
+            POP2 POP2 POP2 #00 JMP2r ( get rid of byte_idx N_PAGES-1 1 from stack. Loads 0 on stack. Jumps out of subroutine. )
+&cont
+POP2 POP2 POP2 ( get rid of byte address N_PAGES-1 0 from stack )
+;bitmap ;byte_idx LDZ2 ADD2 LDA .byte STZ ( locates byte and stores it )
+.byte LDZ .bit_idx LDZ2 NIP SFT #01 AND ( finds bit then loads 01 and does bitwise AND - value of bit will be left on stack)
+JMP2r
+
+
+
+@set_bit ( idx -- )
+find_bit
+;bitmap ;byte_idx LDZ2 ADD2 LDA .byte STZ ( locates byte and stores it )
+.bit_idx LDZ2 mask_set
+.byte LDZ ORA .byte STZ ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
+JMP2r
+
+( .idx STZ2 )
+( find_bit .bit_idx LDZ2 )
+( stack: bit position we want )
+( mask_set )
+( stack: mask with 1 in correct position )
+( .byte LDZ ORA .byte STZ ) ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
+( .byte-address .byte LDZ STZ ) ( stack: ) ( load byte address. Load byte. Store it back at byte address )
+( JMP2r )
+
+
+@clear_bit ( idx -- )
+find_bit
+;bitmap ;byte_idx LDZ2 ADD2 LDA .byte STZ ( locates byte and stores it )
+.bit_idx LDZ2 mask_clear
+.byte LDZ AND .byte STZ ( stack:  )
+( load byte needed do or with mask so whole byte is correct then store it )
+JMP2r
+
+( .idx STZ2
+( find_bit .bit_idx LDZ2 ) ( stack: bit position we want )
+( mask_clear ) ( stack: mask with 0 in correct position )
+( .byte LDZ AND .byte STZ ) ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
+( .byte-address .byte LDZ STZ ) ( stack: ) ( load byte address. Load byte. Store it back at byte address )
+( JMP2r )
+
+
+@mask_clear ( bit_idx* -: mask )
+.bit_idx STZ2 #ff [ #01 .bit_idx LDZ2 NIP #40 SFT SFT ] EOR
+JMP2r
+
+@mask_set ( bit_idx* -: mask )
+.bit_idx STZ2
+#01 .bit_idx LDZ2 NIP #40 SFT SFT
+JMP2r
+
+
+@find_byte ( finds byte_idx )
+.idx STZ2k #03 SFT2 .byte_idx STZ2 ( divides idx by 8 to give byte position which is then stored )
+( stack: byte_idx )
+( ;bitmap ADD2 .byte-address STZk2 LDA )
+( gets bitmap address, adds byte address to it, stores address in &byte-address and keeps it on the stack, loads address, loads byte )
+( stack: address byte )
+( SWP2 POP2 .byte STZ2 )
+( stack:  )
+( stores byte value to .byte )
+JMP2r
+
+
+
+@find_bit ( finds bit_idx )
+find_byte
+#0007 .idx LDZ2 .byte_idx LDZ2 #30 SFT2 SUB2 .bit_idx STZ2
+( SWP2 SFT NIP .bit_idx STZ2 )
+( swaps order so bit position at top of stack, shifts to get bit at position 0, nips to isolate just that bit. Bit is then stored in .bit_idx )
+( stack: )
+JMP2r
+
+
+
+( ==================================================== )
+( Functions for handling the allocation dictionary )
+( Also contains the map of allocated pointers and their sizes )
+~allocation-map.tal
+( ==================================================== )
+( Functions for printing )
+~fmt-print.tal
+~print-extra.tal
+( ==================================================== )
+( This resets memory, allocated and n_allocs for test purposes )
+@reset
+    #00 .error STZ
+    #0000 ;n_allocs STA2
+    clear-bitmap
+    clear-allocation
+    clear-vmem
+
+
+
+@clear-bitmap
+#0000 .idx STZ2 ( #0000 is being stored to .idx )
+&loop (loop start)
+.idx LDZ2 #0040 EQU2 ,&done JCN ( get value of idx and load it )
+( put #0040 on the stack. Check if idx is equal - have we got to end of bitmap. )
+( If true jump to done, else continue with loop )
+
+#00 .idx LDZ2 ;bitmap ADD2 STA2
+( loads #00 on the stack, loads idx, loads bitmap start )
+( idx and bitmap are added to get correct bit position )
+( 00 is stored at this position )
+
+.idx LDZ2 INC2 .idx STZ2
+( load value at idx and increment by 1, store this back at idx )
+
+,&loop JMP ( loop continues until all values are zero )
+&done
+JMP2r
+
+
+
+@clear-vmem
+#0000 ,&idx STR2
+&loop
+,&idx LDR2 #1000 EQU2 ,&done JCN
+#00 ,&idx LDR2 ;vmem ADD2 STA
+,&idx LDR2 INC2 ,&idx STR2
+,&loop JMP
+&done
+JMP2r
+&idx $2
+( ==================================================== )
+( For debugging )
+@print-bitmap
+#0000 ,&idx STR2
+&loop
+,&idx LDR2 #0040 EQU2 ,&done JCN
+,&idx LDR2 ;bitmap ADD2 LDA print8-dec ws
+,&idx LDR2 INC2 ,&idx STR2
+,&loop JMP
+&done
+JMP2r
+&idx $2
+
+@print-allocated
+#0000 ,&idx STR2
+&loop
+,&idx LDR2 #0080 EQU2 ,&done JCN
+,&idx LDR2 ;allocated ADD2 LDA2 print16-dec ws
+,&idx LDR2 ;allocated ADD2 #0002 ADD2 LDA2 print16-dec ws
+,&idx LDR2 #0004 ADD2 ,&idx STR2
+,&loop JMP
+&done
+JMP2r
+&idx $2
+( ==================================================== )
+( b :- not_b )
+@not #01 SWP SUB JMP2r
+( ==================================================== )
+( Functions for error handling )
+
+@report-error ( erc -- )
+    #00 SWP #0002 MUL2 ;errors ADD2 LDA2 JSR2
+    JMP2r
+
+@get-error
+    .error LDZ
+    JMP2r
+
+( error strings )
+@errors =no-error =null-ptr =invalid-ptr =invalid-access =outside-page =max-alloc =ptr-not-alloc =alloc-too-large
+( errors )
+( 0 )
+@no-error JMP2r
+( 1 )
+@null-ptr { 000c "Null 20 "pointer } STH2r !print-str
+( 2 )
+@invalid-ptr { 000f "Invalid 20 "pointer } STH2r !print-str
+( 3 )
+@invalid-access { 000f "Invalid 20 "access: } STH2r !print-str
+( 4 )
+@outside-page { 0016 "Outside 20 "of 20 "page 20 "range: } STH2r !print-str
+( 5 )
+@max-alloc { 0021 "Max 20 "number 20 "of 20 "allocations 20 "reached } STH2r !print-str
+( 6 )
+@ptr-not-alloc { 0019 "Pointer 20 "was 20 "not 20 "allocated } STH2r !print-str
+( 7 )
+@alloc-too-large { 0014 "Allocation 20 "too 20 "large  } STH2r !print-str
+
+( END of functions for error handling )
+( ==================================================== )
+
+( Constants )
+@PAGE_SZ ( -: a* ) #0010 JMP2r ( We allocate 16 bytes per page )
+@N_PAGES ( -: a* ) #0100 JMP2r ( We have a total of 256 pages, so we can allocate at most 4kB )
+@DMEM_START ( -: a* ) #f000 JMP2r ( Start at 60*1024 )
+@MAX_N_ALLOCS ( -: a* ) #0020 JMP2r ( We can allocate at most 32 regions )
+@MAX_ALLOC_SZ ( -: a* )
+PAGE_SZ N_PAGES MUL2
+JMP2r
+( Counter to track number of allocations )
+( The allocation map is in allocation-map.tal )
+@n_allocs 0000
+
+ ( N_PAGES bits, packed in bytes mean N_PAGES/8 entries, so with the above, the bitmap will take 64 bytes )
+ ( 0 means free )
+@bitmap $40
+
+
+
+( The allocation happens below this )
+|f000
+@vmem
