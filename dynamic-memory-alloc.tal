@@ -197,36 +197,49 @@ JMP2r
 
 
 @get_bit ( idx -- bit )
-.idx STZ2
-find_byte .byte-address LDZ2 N_PAGES #01 SUB2 GTH2 ( loads address of byte, loads N_PAGES and subtracts 1. Checks if byte address is greater ) (
-,&ret_0_error4 JCN  ( stack: byte address N_PAGES-1 --> byte address N_PAGES-1 1  JCN to error subroutine )
-,&cont_get JMP ( if GTH false jump here )
-        &ret_0_error4
+find_bit
+.byte_idx LDZ2 N_PAGES #0001 SUB2 GTH2 not ,&cont JCN
+( loads byte_idx, loads N_PAGES and subtracts 1. Checks if byte_idx is greater )
             #04 .error STZ
-            POP2 POP2 POP2 #00 JMP2r ( get rid of byte address N_PAGES-1 1 from stack. Loads 0 on stack. Jumps out of subroutine. )
-&cont_get
+            POP2 POP2 POP2 #00 JMP2r ( get rid of byte_idx N_PAGES-1 1 from stack. Loads 0 on stack. Jumps out of subroutine. )
+&cont
 POP2 POP2 POP2 ( get rid of byte address N_PAGES-1 0 from stack )
-find_bit #01 AND ( finds bit then loads 01 and does bitwise AND - value of bit will be left on stack)
+;bitmap ;byte_idx LDZ2 ADD2 LDA .byte STZ ( locates byte and stores it )
+.byte LDZ .bit_idx LDZ2 NIP SFT #01 AND ( finds bit then loads 01 and does bitwise AND - value of bit will be left on stack)
 JMP2r
-( not sure if I need another JMP2r here )
+
 
 
 @set_bit ( idx -- )
-.idx STZ2
-find_bit .bit_idx LDZ2 ( stack: bit position we want )
-mask_set ( stack: mask with 1 in correct position )
+find_bit
+;bitmap ;byte_idx LDZ2 ADD2 LDA .byte STZ ( locates byte and stores it )
+.bit_idx LDZ2 mask_set
 .byte LDZ ORA .byte STZ ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
-.byte-address .byte LDZ STZ ( stack: ) ( load byte address. Load byte. Store it back at byte address )
 JMP2r
+
+( .idx STZ2 )
+( find_bit .bit_idx LDZ2 )
+( stack: bit position we want )
+( mask_set )
+( stack: mask with 1 in correct position )
+( .byte LDZ ORA .byte STZ ) ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
+( .byte-address .byte LDZ STZ ) ( stack: ) ( load byte address. Load byte. Store it back at byte address )
+( JMP2r )
 
 
 @clear_bit ( idx -- )
-.idx STZ2
-find_bit .bit_idx LDZ2 ( stack: bit position we want )
-mask_clear ( stack: mask with 0 in correct position )
+find_bit
+;bitmap ;byte_idx LDZ2 ADD2 LDA .byte STZ ( locates byte and stores it )
+.bit_idx LDZ2 mask_clear
 .byte LDZ AND .byte STZ ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
-.byte-address .byte LDZ STZ ( stack: ) ( load byte address. Load byte. Store it back at byte address )
 JMP2r
+
+( .idx STZ2
+( find_bit .bit_idx LDZ2 ) ( stack: bit position we want )
+( mask_clear ) ( stack: mask with 0 in correct position )
+( .byte LDZ AND .byte STZ ) ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
+( .byte-address .byte LDZ STZ ) ( stack: ) ( load byte address. Load byte. Store it back at byte address )
+( JMP2r )
 
 
 @mask_clear ( bit_idx* -: mask )
@@ -239,25 +252,24 @@ JMP2r
 JMP2r
 
 
-@find_byte ( finds byte address )
-.idx STZ2k #03 SFT .byte_idx STZ2k( divides idx by 8 to give byte position which is then stored )
+@find_byte ( finds byte_idx )
+.idx STZ2k #03 SFT2 .byte_idx STZ2 ( divides idx by 8 to give byte position which is then stored )
 ( stack: byte_idx )
-;bitmap ADD2 .byte-address STZk2 LDA ( gets bitmap address, adds byte address to it, stores address in &byte-address and keeps it on the stack, loads address, loads byte )
+( ;bitmap ADD2 .byte-address STZk2 LDA )
+( gets bitmap address, adds byte address to it, stores address in &byte-address and keeps it on the stack, loads address, loads byte )
 ( stack: address byte )
-SWP2 POP2 .byte STZ2 ( stack:  ) ( stores byte value to .byte )
+( SWP2 POP2 .byte STZ2 )
+( stack:  )
+( stores byte value to .byte )
 JMP2r
 
 
 
-@find_bit
-.idx STZ2
+@find_bit ( finds bit_idx )
 find_byte
-.idx LDZ2 DUP2 #33 SFT2 SUB2 ( loads idx and duplicates. Shifts right and left to get top hex digit isolated. Takes this away from the idx lower on the stack to get remainder - bit position )
-( stack: bit position LtoR )
-#07 SWP2 SUB2 NIP ( this line flips round bit placement as uxntal starts with position 0 on the right. The result is the uxntal bit position. NIP to just get lower nibble. The result is stored and kept on the stack)
-( stack: bit position RtoL )
-.byte LDZ ( loads byte )
-SWP2 SFT NIP .bit_idx STZ2 ( swaps order so bit position at top of stack, shifts to get bit at position 0, nips to isolate just that bit. Bit is then stored in .bit_idx )
+#0007 .idx LDZ2 .byte_idx LDZ2 #30 SFT2 SUB2 .bit_idx STZ2
+( SWP2 SFT NIP .bit_idx STZ2 )
+( swaps order so bit position at top of stack, shifts to get bit at position 0, nips to isolate just that bit. Bit is then stored in .bit_idx )
 ( stack: )
 JMP2r
 
