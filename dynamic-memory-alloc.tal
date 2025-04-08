@@ -37,7 +37,7 @@
         #07 .error STZ
         #0000 JMP2r 
     &cont2
-    #0000 ;&idx STA2 ( n_bytes* ) ( idx=0 )
+    #0000 .idx STZ2 ( n_bytes* ) ( idx=0 )
 
     !todo ( loop over idx )
 
@@ -57,7 +57,7 @@
     ( snippet: allocated[ptr]=n_bytes )
         insert-ptr POP ( lazy, ignore return status )
 JMP2r
-&idx $2
+
 
 @free ( ptr* -- )
     ( You are free to change this part but there should be no need )
@@ -95,37 +95,41 @@ JMP2r
     &error6 
         #06 .error STZ 
     JMP2r
-&ptr $2   
+&ptr $2
+
 
 ( allocation size is in pages )
 ( idx:16 alloc_sz:16 -- 00 or 01 )
 @alloc_sz_is_free_at_idx ( idx* alloc_sz* -: b )
-    !todo
+    .idx STZ2
     ;alloc_sz LDA2 ;end_alloc STA2k ( alloc_sz loaded, stored at end_alloc and kept on stack )
     ( snippet: if idx+jj>N_PAGES-1: error=4 )
-    N_PAGES #01 SUB GTH ,&ret_0_error4 JCN  ( stack: end_alloc N_PAGES-1 --> end_alloc N_PAGES-1 0 or 1 )
-        &ret_0_error4 
-            #04 .error STZ
-            POP2 POP2 POP2 #00 JMP2r
-    POP2 POP2 POP2 ( stack: empty )
-    ;start LDA2 ;end_alloc LDA2 NEQ ,&loop JCN     ( stack: 0000 end_alloc 01 or 00, if 01 jump to loop, else jump to done )
-    ,&done JMP         ( jump to done if start value == end_alloc )
-    &loop  ( stack: 0000 end_alloc 01 )
-        get_bit EQU2 ,&not_free JCN ( stack: 0000 end_alloc 01 00 or 01 )
-        POP2 POP2 ( stack: 0000 end_alloc )
-        ,&idx LDR2 INC2 ,&idx STR2 ( stack: 0000 end_alloc )
-        SWP2 POP2 ( stack: end_alloc )
-        ;start LDA2 INC2 ;start STAk ( stack: end_alloc start)
-        NEQ ,&loop JCN     ( stack: end_alloc start 01 or 00, if 01 jump to loop, else jump to done )
-        ,&all_free JMP
+    N_PAGES #01 SUB GTH ,&ret_0_error4 JCN ,&next JMP ( stack: end_alloc N_PAGES-1 --> end_alloc N_PAGES-1 0 or 1 )
+    &next
+        POP2 POP2 POP2 ( stack: empty )
+        ;end_alloc LDA2 ;start LDA2 NEQ ,&loop JCN ,&done JMP    ( stack: 0000 end_alloc 01 or 00, if 01 jump to loop, else jump to all_free )
 
-    &not_free ( stack: 0000 end_alloc 01 01)
-        POP2 POP2 POP2 POP2
+    &ret_0_error4
+        #04 .error STZ
+        POP2 POP2 POP2 #00 JMP2r
+
+    &loop  ( stack: 0000 end_alloc 01 )
+        get_bit EQU2 ,&not_free JCN .&next2 JMP ( stack: end_alloc 0000 01 bit 00 or 01 )
+        &next2 (stack: end_alloc 0000 01 bit 00
+            POP2 POP2 POP2 ( stack: end_alloc 0000 )
+            .idx LDZ2 INC2 .idx STZ2 ( stack: 0000 end_alloc )
+            #01 ADD2 ( stack: end_alloc start position incremented)
+            NEQ ,&loop JCN     ( stack: end_alloc start 01 or 00, if 01 jump to loop, else jump to done )
+            ,&all_free JMP
+
+    &not_free ( stack: end_alloc 0000 01 bit 01)
+        POP2 POP2 POP2 POP2 POP2
         #00 ( stack: 00 )
         JMP2r
 
     &done ( stack: 0000 end_alloc 00 )
         POP2 POP2 POP2
+        #00 ( stack: 0 )
         JMP2r
 
     &all_free ( stack: end_alloc start 00 )
@@ -137,36 +141,93 @@ JMP2r
     @end_alloc $2
 
 
+
 ( allocation size is in pages )
-@claim_alloc_sz_at_idx ( idx* alloc_sz* -: ) 
-    !todo
+@claim_alloc_sz_at_idx ( idx* alloc_sz* -: )
+    .idx STZ2
+    ;alloc_sz LDA2 ;end_alloc STA2k ( alloc_sz loaded, stored at end_alloc and kept on stack )
+    ;start LDA2 NEQ ,&loop JCN ,&done JMP    ( stack: 0000 end_alloc 01 or 00, if 01 jump to loop, else jump to all_free )
+
+    &loop  ( stack: end_alloc start value 01 )
+        POP2 ( stack: end_alloc start value )
+        set_bit ( stack: end_alloc start value )
+       .idx  LDZ2 INC2 .idx STZ2 ( stack: end_alloc start value )
+        #01 ADD2 ( stack: end_alloc start position incremented)
+        NEQ ,&loop JCN  ( stack: end_alloc start 01 or 00, if 01 jump to loop, else jump to all_set )
+        ,&all_set JMP
+
+    &all_set ( stack: end_alloc start value 00)
+        POP2 POP2 POP2
+        JMP2r
+
+    &done ( stack: 0000 end_alloc 00 )
+        POP2 POP2 POP2
+        JMP2r
+
+    JMP2r
+    @start 0000
+    @end_alloc $2
+
 
 ( allocation size is in pages )
 @free_alloc_sz_at_idx ( idx* alloc_sz* -: ) 
-    !todo
+    .idx STZ2
+    ;alloc_sz LDA2 ;end_alloc STA2k ( alloc_sz loaded, stored at end_alloc and kept on stack )
+    ;start LDA2 NEQ ,&loop JCN ,&done JMP    ( stack: 0000 end_alloc 01 or 00, if 01 jump to loop, else jump to all_free )
+
+    &loop  ( stack: end_alloc start value 01 )
+        POP2 ( stack: end_alloc start value )
+        clear_bit ( stack: end_alloc start value )
+       .idx  LDZ2 INC2 .idx STZ2 ( stack: end_alloc start value )
+        #01 ADD2 ( stack: end_alloc start position incremented)
+        NEQ ,&loop JCN  ( stack: end_alloc start 01 or 00, if 01 jump to loop, else jump to all_set )
+        ,&all_set JMP
+
+    &all_set ( stack: end_alloc start value 00)
+        POP2 POP2 POP2
+        JMP2r
+
+    &done ( stack: 0000 end_alloc 00 )
+        POP2 POP2 POP2
+        JMP2r
+
+    JMP2r
+    @start 0000
+    @end_alloc $2
 
 
 @get_bit ( idx -- bit )
-!todo
-find_byte N_PAGES #01 SUB2 GTH2
-,&ret_0_error4 JCN  ( stack: end_alloc N_PAGES-1 --> end_alloc N_PAGES-1 0 or 1 )
+.idx STZ2
+find_byte .byte-address LDZ2 N_PAGES #01 SUB2 GTH2 ( loads address of byte, loads N_PAGES and subtracts 1. Checks if byte address is greater ) (
+,&ret_0_error4 JCN  ( stack: byte address N_PAGES-1 --> byte address N_PAGES-1 1  JCN to error subroutine )
+,&cont_get JMP ( if GTH false jump here )
         &ret_0_error4
             #04 .error STZ
-            POP2 POP2 POP2 #00 JMP2r
+            POP2 POP2 POP2 #00 JMP2r ( get rid of byte address N_PAGES-1 1 from stack. Loads 0 on stack. Jumps out of subroutine. )
+&cont_get
+POP2 POP2 POP2 ( get rid of byte address N_PAGES-1 0 from stack )
 find_bit #01 AND ( finds bit then loads 01 and does bitwise AND - value of bit will be left on stack)
 JMP2r
+( not sure if I need another JMP2r here )
+
 
 @set_bit ( idx -- )
-!todo
-find_bit
-mask_set
+.idx STZ2
+find_bit .bit_idx LDZ2 ( stack: bit position we want )
+mask_set ( stack: mask with 1 in correct position )
+.byte LDZ ORA .byte STZ ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
+.byte-address .byte LDZ STZ ( stack: ) ( load byte address. Load byte. Store it back at byte address )
 JMP2r
 
+
 @clear_bit ( idx -- )
-!todo
-find_bit
-mask_clear
+.idx STZ2
+find_bit .bit_idx LDZ2 ( stack: bit position we want )
+mask_clear ( stack: mask with 0 in correct position )
+.byte LDZ AND .byte STZ ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
+.byte-address .byte LDZ STZ ( stack: ) ( load byte address. Load byte. Store it back at byte address )
 JMP2r
+
 
 @mask_clear ( bit_idx* -: mask )
 .bit_idx STZ2 #ff [ #01 .bit_idx LDZ2 NIP #40 SFT SFT ] EOR
@@ -178,25 +239,29 @@ JMP2r
 JMP2r
 
 
-@find_byte
-.&idx LDA2 #03 SFT ( divides idx by 8 to give byte position )
-( stack: idx//8 )
-;bitmap ADD2 LDA2 LDA2 ( gets bitmap address, adds byte address to it, loads address, loads byte )
+@find_byte ( finds byte address )
+.idx STZ2k #03 SFT .byte_idx STZ2k( divides idx by 8 to give byte position which is then stored )
+( stack: byte_idx )
+;bitmap ADD2 .byte-address STZk2 LDA ( gets bitmap address, adds byte address to it, stores address in &byte-address and keeps it on the stack, loads address, loads byte )
 ( stack: address byte )
-SWP2 POP2 ;byte STA2 ( stack:  )
+SWP2 POP2 .byte STZ2 ( stack:  ) ( stores byte value to .byte )
 JMP2r
-@byte $2
+
+
 
 @find_bit
+.idx STZ2
 find_byte
-.&idx LDA2 DUP2 #33SFT2 SUB2 ( loads idx and duplicates. Shifts right and left to get top hex digit isolated. Takes this away from the idx lower on the stack to get remainder - bit position )
+.idx LDZ2 DUP2 #33 SFT2 SUB2 ( loads idx and duplicates. Shifts right and left to get top hex digit isolated. Takes this away from the idx lower on the stack to get remainder - bit position )
 ( stack: bit position LtoR )
 #07 SWP2 SUB2 NIP ( this line flips round bit placement as uxntal starts with position 0 on the right. The result is the uxntal bit position. NIP to just get lower nibble. The result is stored and kept on the stack)
 ( stack: bit position RtoL )
-;byte LDA2 LDA2 SWP2 POP2 ( loads byte address loads byte swaps position to pop address) 
-SWP2 SFT NIP ( swaps order so bit position at top of stack, shifts to get bit at position 0, nips to isolate just that bit )
-( stack: just bit we want )
+.byte LDZ ( loads byte )
+SWP2 SFT NIP .bit_idx STZ2 ( swaps order so bit position at top of stack, shifts to get bit at position 0, nips to isolate just that bit. Bit is then stored in .bit_idx )
+( stack: )
 JMP2r
+
+
 
 ( ==================================================== )
 ( Functions for handling the allocation dictionary )
@@ -218,24 +283,24 @@ JMP2r
 
 
 @clear-bitmap
-#0000 ,&idx STR2 ( #0000 is being stored to &idx )
+#0000 .idx STZ2 ( #0000 is being stored to .idx )
 &loop (loop start)
-,&idx LDR2 #0040 EQU2 ,&done JCN ( get value of idx and load it )
+.idx LDZ2 #0040 EQU2 ,&done JCN ( get value of idx and load it )
 ( put #0040 on the stack. Check if idx is equal - have we got to end of bitmap. )
 ( If true jump to done, else continue with loop )
 
-#00 ,&idx LDR2 ;bitmap ADD2 STA
+#00 .idx LDZ2 ;bitmap ADD2 STA2
 ( loads #00 on the stack, loads idx, loads bitmap start )
 ( idx and bitmap are added to get correct bit position )
 ( 00 is stored at this position )
 
-,&idx LDR2 INC2 ,&idx STR2
+.idx LDZ2 INC2 .idx STZ2
 ( load value at idx and increment by 1, store this back at idx )
 
 ,&loop JMP ( loop continues until all values are zero )
 &done
 JMP2r
-&idx $2
+
 
 
 @clear-vmem
@@ -324,6 +389,8 @@ JMP2r
  ( N_PAGES bits, packed in bytes mean N_PAGES/8 entries, so with the above, the bitmap will take 64 bytes )
  ( 0 means free )
 @bitmap $40
+
+
 
 ( The allocation happens below this )
 |f000
