@@ -118,7 +118,7 @@ JMP2r
 ( allocation size is in pages )
 ( idx:16 alloc_sz:16 -- 00 or 01 )
 @alloc_sz_is_free_at_idx ( idx* alloc_sz* -: b )
-    .idx STZ2 ;alloc_sz STA2
+    ;alloc_sz STA2 .idx STZ2
     ;alloc_sz LDA2 ;end_alloc STA2k ( alloc_sz loaded, stored at end_alloc and kept on stack )
     ( snippet: if idx+jj>N_PAGES-1: error=4 )
     N_PAGES #01 SUB GTH ,&ret_0_error4 JCN ,&next JMP ( stack: end_alloc N_PAGES-1 --> end_alloc N_PAGES-1 0 or 1 )
@@ -163,7 +163,7 @@ JMP2r
 
 ( allocation size is in pages )
 @claim_alloc_sz_at_idx ( idx* alloc_sz* -: )
-    .idx STZ2 ;alloc_sz STA2
+    ;alloc_sz STA2 .idx STZ2
     ;alloc_sz LDA2 ;end_alloc STA2k ( alloc_sz loaded, stored at end_alloc and kept on stack )
     ;start LDA2 NEQ ,&loop JCN ,&done JMP    ( stack: 01 or 00, if 01 jump to loop, else jump to done )
 
@@ -193,7 +193,7 @@ JMP2r
 
 ( allocation size is in pages )
 @free_alloc_sz_at_idx ( idx* alloc_sz* -: ) 
-    .idx STZ2 ;alloc_sz STA2
+    ;alloc_sz STA2 .idx STZ2
     ;alloc_sz LDA2 ;end_alloc STA2k ( alloc_sz loaded, stored at end_alloc and kept on stack )
     ;start LDA2 NEQ ,&loop JCN ,&done JMP    ( stack: 01 or 00, if 01 jump to loop, else jump to done )
 
@@ -222,6 +222,7 @@ JMP2r
 
 
 @get_bit ( idx -- bit )
+.idx STZ2
 find_bit
 .byte_idx LDZ2 N_PAGES #0001 SUB2 GTH2 not ,&cont JCN
 ( loads byte_idx, loads N_PAGES and subtracts 1. Checks if byte_idx is greater )
@@ -236,6 +237,7 @@ JMP2r
 
 
 @set_bit ( idx -- )
+.idx STZ2
 find_bit
 ;bitmap ;byte_idx LDZ2 ADD2 LDA .byte STZ ( locates byte and stores it )
 .bit_idx LDZ2 mask_set
@@ -253,6 +255,7 @@ JMP2r
 
 
 @clear_bit ( idx -- )
+.idx STZ2
 find_bit
 ;bitmap ;byte_idx LDZ2 ADD2 LDA .byte STZ ( locates byte and stores it )
 .bit_idx LDZ2 mask_clear
@@ -278,7 +281,7 @@ JMP2r
 
 
 @find_byte ( finds byte_idx )
-.idx STZ2k #03 SFT2 .byte_idx STZ2 ( divides idx by 8 to give byte position which is then stored )
+.idx LDZ2 #03 SFT2 .byte_idx STZ2 ( divides idx by 8 to give byte position which is then stored )
 ( stack: byte_idx )
 ( ;bitmap ADD2 .byte-address STZk2 LDA )
 ( gets bitmap address, adds byte address to it, stores address in &byte-address and keeps it on the stack, loads address, loads byte )
