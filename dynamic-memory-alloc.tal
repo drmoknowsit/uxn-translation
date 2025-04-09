@@ -221,18 +221,23 @@ JMP2r
     @idx $2
 
 
-@get_bit ( idx -- bit )
-.idx STZ2
-find_bit
-.byte_idx LDZ2 N_PAGES #0001 SUB2 GTH2 not ,&cont JCN
-( loads byte_idx, loads N_PAGES and subtracts 1. Checks if byte_idx is greater )
+@get_bit
+;&idx STA2 ;&idx LDA2 #03 SFT2 ;&byte_idx STA2
+#0007 ;&idx LDA2 ;&byte_idx LDA2 #30 SFT2 SUB2 SUB2 ;&bit_idx STA2
+;&byte_idx LDA2 N_PAGES #0001 SUB2 GTH2 not ,&cont JCN
             #04 .error STZ
-            POP2 POP2 POP2 #00 JMP2r ( get rid of byte_idx N_PAGES-1 1 from stack. Loads 0 on stack. Jumps out of subroutine. )
 &cont
-POP2 POP2 POP2 ( get rid of byte address N_PAGES-1 0 from stack )
-;bitmap ;byte_idx LDZ2 ADD2 LDA .byte STZ ( locates byte and stores it )
-.byte LDZ .bit_idx LDZ2 NIP SFT #01 AND ( finds bit then loads 01 and does bitwise AND - value of bit will be left on stack)
+;bitmap ;&byte_idx LDA2 ADD2 LDA ;&byte STA
+;&byte LDA ;&bit_idx LDA2 NIP SFT #01 AND
 JMP2r
+
+&idx $2
+&byte_idx $2
+&bit_idx $2
+&byte $1
+
+
+@not #01 SWP SUB JMP2r
 
 
 

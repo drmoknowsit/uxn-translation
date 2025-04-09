@@ -1,7 +1,7 @@
 ( Unit tests for dynamic memory allocation code )
-
-~get_bit.tal
 |0000
+( I suggest you use the zero page for temporary storage )
+( all your allocations here )
 @idx $2
 @byte $2
 @byte_idx $2
@@ -13,13 +13,51 @@
 |0100
 ( unit tests )
 
-test-get_bit
-set-bitmap-B
+;test-get_bit JSR2
 BRK
 
-( define your tests here )
 
 
+
+
+@get_bit ( idx -- bit ) 
+ .idx STZ2
+ find_byte .byte-address LDZ2 N_PAGES #01 SUB2 GTH2 
+ ,&ret_0_error4 JCN  
+ ,&cont_get JMP 
+         &ret_0_error4
+             #04 .error STZ
+             POP2 POP2 POP2 #00 JMP2r
+             POP2 POP2 POP2 #00 JMP2r 
+ &cont_get
+ POP2 POP2 POP2 
+ find_bit #01 AND 
+ JMP2r
+
+@not #01 SWP SUB JMP2r
+
+@find_byte
+ .idx LDZ2 #03 SFT .byte_idx STZ2k ( divides idx by 8 to give byte position which is then stored )
+ ( stack: byte_idx )
+ ;bitmap ADD2 .byte-address STZk2 LDA 
+ SWP2 POP2 .byte STZ2 ( stack:  ) ( stores byte value to .byte )
+ JMP2r
+
+
+
+
+@find_bit ( finds bit_idx )
+.idx LDZ2
+find_byte 
+.idx LDZ2 DUP2 #33 SFT2 SUB2 
+#0007 SWP2 SUB2 NIP 
+( SWP2 SFT NIP .bit_idx STZ2 ) 
+( swaps order so bit position at top of stack, shifts to get bit at position 0, nips to isolate just that bit. Bit is then stored in .bit_idx )
+( stack: )
+JMP2r
+
+
+( In both cases, read bits that are set and not set )
 @test-get_bit ( -- )
     { 0016 "Test 20 "for 20 "get_bit(idx) 0a } STH2r print-str
     (
@@ -68,8 +106,26 @@ JMP2r
     #30 ;bitmap #000d ADD2 STA ( position: 106=1,107=1 )
 JMP2r
 
-
-
 ( ==================================================== )
 
-~get_bit.tal
+@N_PAGES #0100 JMP2r
+@bitmap $40
+@print-bit #30 ADD #18 DEO JMP2r
+@nl #0a18 DEO JMP2r
+@print-str 
+    #18 !write-string
+
+@write-string ( {str}* unit -- )
+	STH
+    DUP2 LDA2 ( str len )
+    SWP2 ( len str )
+    INC2 INC2 DUP2  ( len str+2 str+2 )
+    ROT2 ADD2 SWP2 ( str+2+len str+2 )
+&l ( -- )
+    LDAk STHrk DEO
+        INC2 GTH2k ?&l
+        POP2 POP2 
+	POPr
+JMP2r
+
+ 
