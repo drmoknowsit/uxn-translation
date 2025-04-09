@@ -242,24 +242,36 @@ JMP2r
 
 
 @set_bit ( idx -- )
-.idx STZ2
-find_bit
-;bitmap ;byte_idx LDZ2 ADD2 LDA .byte STZ ( locates byte and stores it )
-.bit_idx LDZ2 mask_set
-.byte LDZ ORA .byte STZ ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
+;&idx STA2 ;&idx LDA2 #03 SFT2 ;&byte_idx STA2
+#0007 ;&idx LDA2 SUB2 ;&byte_idx LDA2 #30 SFT2 ADD2 ;&bit_idx STA2
+;bitmap ;&byte_idx LDA2 ADD2 LDA ;&byte STA
+
+;&bit_idx LDA mask_set ;&byte ORA ;bitmap ;&byte_idx LDA2 ADD2 LDA STA ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
 JMP2r
 
-( .idx STZ2 )
-( find_bit .bit_idx LDZ2 )
-( stack: bit position we want )
-( mask_set )
-( stack: mask with 1 in correct position )
-( .byte LDZ ORA .byte STZ ) ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
-( .byte-address .byte LDZ STZ ) ( stack: ) ( load byte address. Load byte. Store it back at byte address )
-( JMP2r )
+&idx $2
+&byte_idx $2
+&bit_idx $2
+&byte $1
 
 
 @clear_bit ( idx -- )
+( new code )
+;&idx STA2 ;&idx LDA2 #03 SFT2 ;&byte_idx STA2
+#0007 ;&idx LDA2 SUB2 ;&byte_idx LDA2 #30 SFT2 ADD2 ;&bit_idx STA2
+;bitmap ;&byte_idx LDA2 ADD2 LDA ;&byte STA
+
+;&bit_idx LDA mask_clear ;&byte AND ;bitmap ;&byte_idx LDA2 ADD2 LDA STA ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
+JMP2r
+
+&idx $2
+&byte_idx $2
+&bit_idx $2
+&byte $1
+
+
+
+( old code )
 .idx STZ2
 find_bit
 ;bitmap ;byte_idx LDZ2 ADD2 LDA .byte STZ ( locates byte and stores it )
@@ -280,9 +292,11 @@ JMP2r
 JMP2r
 
 @mask_set ( bit_idx* -: mask )
-.bit_idx STZ2
-#01 .bit_idx LDZ2 NIP #40 SFT SFT
+;&bit_idx STA2
+#01 ;&bit_idx LDZ2 NIP #40 SFT SFT
 JMP2r
+
+&bit_idx $2
 
 
 @find_byte ( finds byte_idx )

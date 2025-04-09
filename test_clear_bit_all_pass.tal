@@ -1,0 +1,110 @@
+
+
+|0000
+@bit_idx $2
+@error $1 ( this should be last )
+
+
+|100
+;test-clear_bit JSR2
+BRK
+
+
+
+
+
+@clear_bit ( idx -- )
+( new code )
+;&idx STA2 ;&idx LDA2 #03 SFT2 ;&byte_idx STA2
+#0007 ;&idx LDA2 SUB2 ;&byte_idx LDA2 #30 SFT2 ADD2 ;&bit_idx STA2
+;bitmap ;&byte_idx LDA2 ADD2 LDA ;&byte STA
+
+;&bit_idx LDA mask_clear ;&byte AND ;bitmap ;&byte_idx LDA2 ADD2 LDA STA ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
+JMP2r
+
+&idx $2
+&byte_idx $2
+&bit_idx $2
+&byte $1
+
+@get_bit
+;&idx STA2 ;&idx LDA2 #03 SFT2 ;&byte_idx STA2
+#0007 ;&idx LDA2 ;&byte_idx LDA2 #30 SFT2 SUB2 SUB2 ;&bit_idx STA2
+;&byte_idx LDA2 N_PAGES #0001 SUB2 GTH2 not ,&cont JCN
+            #04 .error STZ
+&cont
+;bitmap ;&byte_idx LDA2 ADD2 LDA ;&byte STA
+;&byte LDA ;&bit_idx LDA2 NIP SFT #01 AND
+JMP2r
+
+&idx $2
+&byte_idx $2
+&bit_idx $2
+&byte $1
+
+
+
+
+@not #01 SWP SUB JMP2r
+
+
+@mask_clear ( bit_idx* -: mask )
+.bit_idx STZ2 #ff [ #01 .bit_idx LDZ2 NIP #40 SFT SFT ] EOR
+JMP2r
+
+
+
+@test-clear_bit ( -- )
+    { 0018 "Test 20 "for 20 "clear_bit(idx) 0a } STH2r print-str
+    #000f clear_bit #000e clear_bit
+    #0018 clear_bit #0019 clear_bit
+    #0026 clear_bit #0027 clear_bit
+    #0041 clear_bit #0042 clear_bit
+    #0065 clear_bit #0066 clear_bit
+    #006a clear_bit #006b clear_bit
+
+    #000f get_bit #00 EQU #000e get_bit #00 EQU AND print-bit nl
+    #0018 get_bit #00 EQU #0019 get_bit #00 EQU AND print-bit nl
+    #0026 get_bit #00 EQU #0027 get_bit #00 EQU AND print-bit nl
+    #0041 get_bit #00 EQU #0042 get_bit #00 EQU AND print-bit nl
+    #0065 get_bit #00 EQU #0066 get_bit #00 EQU AND print-bit nl
+    #006a get_bit #00 EQU #006b get_bit #00 EQU AND print-bit nl
+JMP2r
+
+@set-bitmap-A
+   #01 ;bitmap #0001 ADD2 STA
+   #80 ;bitmap #0003 ADD2 STA
+   #02 ;bitmap #0004 ADD2 STA
+   #60 ;bitmap #0008 ADD2 STA
+   #04 ;bitmap #000c ADD2 STA
+   #20 ;bitmap #000d ADD2 STA
+JMP2r
+
+@set-bitmap-B
+   #03 ;bitmap #0001 ADD2 STA ( positions: 16=0,15=1 )
+   #c0 ;bitmap #0003 ADD2 STA ( positions: 24=1,25=1 )
+   #07 ;bitmap #0004 ADD2 STA ( positions: 37=1,38=1 )
+   #60 ;bitmap #0008 ADD2 STA ( positions: 65=0,66=1 )
+   #0e ;bitmap #000c ADD2 STA ( positions: 100=1,101=1 )
+   #30 ;bitmap #000d ADD2 STA ( position: 106=1,107=1 )
+JMP2r
+
+
+@N_PAGES #0100 JMP2r
+@bitmap $40
+@print-bit #30 ADD #18 DEO JMP2r
+@nl #0a18 DEO JMP2r
+@print-str
+   #18 !write-string
+@write-string ( {str}* unit -- )
+            STH
+   DUP2 LDA2 ( str len )
+   SWP2 ( len str )
+   INC2 INC2 DUP2  ( len str+2 str+2 )
+   ROT2 ADD2 SWP2 ( str+2+len str+2 )
+   &l ( -- )
+   LDAk STHrk DEO
+       INC2 GTH2k ?&l
+       POP2 POP2
+            POPr
+JMP2r

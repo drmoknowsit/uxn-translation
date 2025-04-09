@@ -1,0 +1,73 @@
+
+ 
+|0000
+@bit_idx $2
+@error $1 ( this should be last )
+
+ 
+|100
+;test-mask_set JSR2
+BRK
+ 
+
+
+ 
+@test-mask_set ( -- )
+    { 001b "Test 20 "for 20 "mask_set(bit_idx) 0a } STH2r print-str
+    #0000 mask_set ( 0000 0001 ) #01 EQU #30 ADD #18 DEO #0a18 DEO
+    #0001 mask_set ( 0000 0010 ) #02 EQU #30 ADD #18 DEO #0a18 DEO
+    #0002 mask_set ( 0000 0100 ) #04 EQU #30 ADD #18 DEO #0a18 DEO
+    #0003 mask_set ( 1111 0111 ) #08 EQU #30 ADD #18 DEO #0a18 DEO
+    #0004 mask_set ( 1110 1111 ) #10 EQU #30 ADD #18 DEO #0a18 DEO
+    #0005 mask_set ( 1101 1111 ) #20 EQU #30 ADD #18 DEO #0a18 DEO
+    #0006 mask_set ( 1011 1111 ) #40 EQU #30 ADD #18 DEO #0a18 DEO
+    #0007 mask_set ( 0111 1111 ) #80 EQU #30 ADD #18 DEO #0a18 DEO
+JMP2r
+
+
+@mask_set ( bit_idx* -: mask )
+.bit_idx STZ2
+#01 .bit_idx LDZ2 NIP #40 SFT SFT
+JMP2r
+
+
+
+ 
+@set-bitmap-A
+   #01 ;bitmap #0001 ADD2 STA 
+   #80 ;bitmap #0003 ADD2 STA 
+   #02 ;bitmap #0004 ADD2 STA 
+   #60 ;bitmap #0008 ADD2 STA 
+   #04 ;bitmap #000c ADD2 STA 
+   #20 ;bitmap #000d ADD2 STA
+JMP2r
+ 
+@set-bitmap-B
+   #03 ;bitmap #0001 ADD2 STA ( positions: 16=0,15=1 )
+   #c0 ;bitmap #0003 ADD2 STA ( positions: 24=1,25=1 )
+   #07 ;bitmap #0004 ADD2 STA ( positions: 37=1,38=1 )
+   #60 ;bitmap #0008 ADD2 STA ( positions: 65=0,66=1 )
+   #0e ;bitmap #000c ADD2 STA ( positions: 100=1,101=1 )
+   #30 ;bitmap #000d ADD2 STA ( position: 106=1,107=1 )
+JMP2r
+ 
+ 
+@N_PAGES #0100 JMP2r
+@bitmap $40
+@print-bit #30 ADD #18 DEO JMP2r
+@nl #0a18 DEO JMP2r
+@print-str 
+   #18 !write-string
+@write-string ( {str}* unit -- )
+            STH
+   DUP2 LDA2 ( str len )
+   SWP2 ( len str )
+   INC2 INC2 DUP2  ( len str+2 str+2 )
+   ROT2 ADD2 SWP2 ( str+2+len str+2 )
+   &l ( -- )
+   LDAk STHrk DEO
+       INC2 GTH2k ?&l
+       POP2 POP2 
+            POPr
+JMP2r
+ 
