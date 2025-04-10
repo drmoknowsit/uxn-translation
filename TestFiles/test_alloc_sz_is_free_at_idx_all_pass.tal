@@ -1,0 +1,161 @@
+
+
+|0000
+@idx $2
+@bit_idx $2
+@error $1 ( this should be last )
+
+
+|100
+;test-alloc_sz_is_free_at_idx JSR2
+BRK
+
+@test-alloc_sz_is_free_at_idx ( -- )
+    { 002f "Test 20 "for 20 "alloc_sz_is_free_at_idx(idx,alloc_sz) 0a } STH2r print-str
+( All 0 )
+    { 0006 "part1 0a } STH2r print-str
+     #000f #0001 alloc_sz_is_free_at_idx #00 EQU print-bit nl
+     #000f #0002 alloc_sz_is_free_at_idx #00 EQU print-bit nl
+     #000f #0004 alloc_sz_is_free_at_idx #00 EQU print-bit nl
+     #000f #0008 alloc_sz_is_free_at_idx #00 EQU print-bit nl
+     #000f #0010 alloc_sz_is_free_at_idx #00 EQU print-bit nl
+     { 0006 "part2 0a } STH2r print-str
+( Last is 0 because 24 is set )
+     #0010 #0001 alloc_sz_is_free_at_idx #01 EQU print-bit nl
+     #0010 #0002 alloc_sz_is_free_at_idx #01 EQU print-bit nl
+     #0010 #0004 alloc_sz_is_free_at_idx #01 EQU print-bit nl
+     #0010 #0008 alloc_sz_is_free_at_idx #01 EQU print-bit nl
+     #0010 #0010 alloc_sz_is_free_at_idx #00 EQU print-bit nl
+     { 0006 "part3 0a } STH2r print-str
+( 11100 because 24 is set )
+     #0011 #0001 alloc_sz_is_free_at_idx #01 EQU print-bit nl
+     #0011 #0002 alloc_sz_is_free_at_idx #01 EQU print-bit nl
+     #0011 #0004 alloc_sz_is_free_at_idx #01 EQU print-bit nl
+     #0011 #0008 alloc_sz_is_free_at_idx #00 EQU print-bit nl
+     #0011 #0010 alloc_sz_is_free_at_idx #00 EQU print-bit nl
+     { 0006 "part4 0a } STH2r print-str
+( All one )
+    #006c #0001 alloc_sz_is_free_at_idx #01 EQU print-bit nl
+    #006c #0002 alloc_sz_is_free_at_idx #01 EQU print-bit nl
+    #006c #0004 alloc_sz_is_free_at_idx #01 EQU print-bit nl
+    #006c #0008 alloc_sz_is_free_at_idx #01 EQU print-bit nl
+    #006c #0010 alloc_sz_is_free_at_idx #01 EQU print-bit nl
+JMP2r
+
+
+@alloc_sz_is_free_at_idx (  idx* alloc_sz* -: b  )
+    ;alloc_sz STA2 .idx STZ2
+    ;alloc_sz LDA2 ;end_alloc STA2k (  alloc_sz loaded, stored at end_alloc and kept on stack  )
+    (  snippet: if idx+jj>N_PAGES-1: error=4  )
+    N_PAGES #01 SUB GTH ,&ret_0_error4 JCN ,&next JMP (  stack: end_alloc N_PAGES-1 --> end_alloc N_PAGES-1 0 or 1  )
+    &next
+        POP2 POP2 POP2 (  stack: empty  )
+        ;end_alloc LDA2 ;start LDA2 NEQ ,&loop JCN ,&all_free JMP    (  stack: 01 or 00, if 01 jump to loop, else jump to all_free  )
+
+    &ret_0_error4
+        #04 .error STZ
+        POP2 POP2 POP2 #00 JMP2r
+
+    &loop  (  stack: 0000 end_alloc 01  )
+        get_bit EQU2 ,&not_free JCN .&next2 JMP (  stack: 0000 or 0001  )
+        &next2 ( stack: 0000  )
+            POP2 (  stack:  )
+            .idx LDZ2 INC2 .idx STZ2 (  stack:   )
+            ;end_alloc LDA2 ;start LDA2 #0001 ADD2 ;start STA2 (  stack: end_alloc start position incremented )
+            NEQ ,&loop JCN     (  stack: 01 or 00, if 01 jump to loop, else jump to all_free  )
+            ,&all_free JMP
+
+    &not_free (  stack: 01 )
+        POP2
+        #0000 (  stack: 00  )
+        JMP2r
+
+    &all_free (  stack: 00  )
+        POP2
+        #0001
+        JMP2r (  stack: 01  )
+    JMP2r
+    @start 0000
+    @alloc_sz $2
+    @end_alloc $2
+
+
+
+@clear_bit (  idx --  )
+(  new code  )
+;&idx STA2 ;&idx LDA2 #03 SFT2 ;&byte_idx STA2
+#0007 ;&idx LDA2 SUB2 ;&byte_idx LDA2 #30 SFT2 ADD2 ;&bit_idx STA2
+;bitmap ;&byte_idx LDA2 ADD2 LDA ;&byte STA
+
+;&bit_idx LDA mask_clear ;&byte AND ;bitmap ;&byte_idx LDA2 ADD2 LDA STA (  stack:   ) (  load byte needed do or with mask so whole byte is correct then store it  )
+JMP2r
+
+&idx $2
+&byte_idx $2
+&bit_idx $2
+&byte $1
+
+
+@mask_clear (  bit_idx* -: mask  )
+.bit_idx STZ2 #ff [ #01 .bit_idx LDZ2 NIP #40 SFT SFT ] EOR
+JMP2r
+
+
+@get_bit
+;&idx STA2 ;&idx LDA2 #03 SFT2 ;&byte_idx STA2
+#0007 ;&idx LDA2 ;&byte_idx LDA2 #30 SFT2 SUB2 SUB2 ;&bit_idx STA2
+;&byte_idx LDA2 N_PAGES #0001 SUB2 GTH2 not ,&cont JCN
+            #04 .error STZ
+&cont
+;bitmap ;&byte_idx LDA2 ADD2 LDA ;&byte STA
+;&byte LDA ;&bit_idx LDA2 NIP SFT #01 AND
+JMP2r
+
+&idx $2
+&byte_idx $2
+&bit_idx $2
+&byte $1
+
+
+
+
+@not #01 SWP SUB JMP2r
+
+
+@set-bitmap-A
+   #01 ;bitmap #0001 ADD2 STA
+   #80 ;bitmap #0003 ADD2 STA
+   #02 ;bitmap #0004 ADD2 STA
+   #60 ;bitmap #0008 ADD2 STA
+   #04 ;bitmap #000c ADD2 STA
+   #20 ;bitmap #000d ADD2 STA
+JMP2r
+
+@set-bitmap-B
+   #03 ;bitmap #0001 ADD2 STA ( positions: 16=0,15=1 )
+   #c0 ;bitmap #0003 ADD2 STA ( positions: 24=1,25=1 )
+   #07 ;bitmap #0004 ADD2 STA ( positions: 37=1,38=1 )
+   #60 ;bitmap #0008 ADD2 STA ( positions: 65=0,66=1 )
+   #0e ;bitmap #000c ADD2 STA ( positions: 100=1,101=1 )
+   #30 ;bitmap #000d ADD2 STA ( position: 106=1,107=1 )
+JMP2r
+
+
+@N_PAGES #0100 JMP2r
+@bitmap $40
+@print-bit #30 ADD #18 DEO JMP2r
+@nl #0a18 DEO JMP2r
+@print-str
+   #18 !write-string
+@write-string ( {str}* unit -- )
+            STH
+   DUP2 LDA2 ( str len )
+   SWP2 ( len str )
+   INC2 INC2 DUP2  ( len str+2 str+2 )
+   ROT2 ADD2 SWP2 ( str+2+len str+2 )
+   &l ( -- )
+   LDAk STHrk DEO
+       INC2 GTH2k ?&l
+       POP2 POP2
+            POPr
+JMP2r
