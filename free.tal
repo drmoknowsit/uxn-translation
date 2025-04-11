@@ -1,0 +1,39 @@
+@free ( ptr* -- )
+    ( You are free to change this part but there should be no need )
+    DUP2 ;&ptr STA2 ( ptr* )
+    DMEM_START SUB2 PAGE_SZ DIV2 ( idx* = (ptr-DMEM_START) // PAGE_SZ )
+    ( if idx<0 or idx>N_PAGES-1: error=2 )
+    DUP2 DUP2 ( idx* idx* idx* )
+    #0000 LTH2 ( idx* idx* idx<0 )
+    ROT ROT ( idx* idx<0 idx* )
+    N_PAGES #0001 SUB2 GTH2 ( idx* idx<0 idx>N_PAGES-1 )
+    ORA not ,&cont JCN ( idx* )
+        #02 .error STZ
+        JMP2r
+    &cont ( idx* )
+    ( this corresponds to
+        if ptr in allocated
+    )
+    ;&ptr LDA2 lookup-ptr
+    ( check if lookup-ptr returned 0000
+        if so, error=0 else error=6
+    )
+    DUP2 #0000 EQU2 ,&error6 JCN ( idx* n_bytes* )
+    #00 .error STZ
+
+   ( !todo )
+    #0001 SUB2 PAGE_SZ DIV2 #0001 ADD2  ( idx* n_pages )
+    free_alloc_sz_at_idx
+    ;&ptr LDA2 delete-ptr POP
+    ;n_allocs LDA2 #0001 SUB2 ;n_allocs STA2
+    JMP2r
+    &error6
+        #06 .error STZ
+    JMP2r
+&ptr $2
+
+
+
+
+
+

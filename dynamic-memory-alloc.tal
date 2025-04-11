@@ -103,21 +103,16 @@
     DUP2 #0000 EQU2 ,&error6 JCN (  idx* n_bytes*  )
     #00 .error STZ
 
-    #0001 SUB2 PAGE_SZ #0001 ADD2 DIV2 .n_pages STZ2
-    ;&idx LDA2 .n_pages LDZ2
+    #0001 SUB2 PAGE_SZ DIV2 #0001 ADD2  ( idx* n_pages )
     free_alloc_sz_at_idx
-    (  this corresponds to
-        del allocated[ptr]
-     )
-    ;&ptr LDA2 delete-ptr
+    ;&ptr LDA2 delete-ptr POP
     ;n_allocs LDA2 #0001 SUB2 ;n_allocs STA2
-    (  You are free to change this part but there should be no need  )
     JMP2r
     &error6 
         #06 .error STZ 
     JMP2r
 &ptr $2
-&idx $2
+
 
 
 (  allocation size is in pages  )
