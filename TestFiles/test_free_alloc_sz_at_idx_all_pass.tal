@@ -19,31 +19,29 @@ BRK
 JMP2r
 
 @free_alloc_sz_at_idx (  idx* alloc_sz* -:  )
-    ;alloc_sz1 STA2 .idx STZ2
-    ;alloc_sz1 LDA2 ;end_alloc1 STA2k (  alloc_sz loaded, stored at end_alloc and kept on stack  )
-    ;start1 LDA2 NEQ ,&loop JCN ,&done JMP    (  stack: 01 or 00, if 01 jump to loop, else jump to done  )
+    ;alloc_sz2 STA2
+    ;idx2 STA2
+    #0000 ;place2 STA2
 
-    &loop  (  stack: 01  )
-        POP2 (  stack:   )
-        .idx LDZ2
-        clear_bit (  stack:   )
-        .idx LDZ2 INC2 .idx STZ2 (  stack:   )
-        ;end_alloc1 LDA2 ;start1 LDA2 #0001 ADD2 ;start1 STA2k (  stack: end_alloc start position incremented )
-        NEQ ,&loop JCN  (  stack:  01 or 00, if 01 jump to loop, else jump to all_clear  )
-        ,&all_clear JMP
+    &loop
+        ;place2 LDA2
+        ;alloc_sz2 LDA2
+        EQU2 ,&done JCN
 
-    &all_clear (  stack: end_alloc start value 00 )
         POP2
-        JMP2r
+        ;place2 LDA2 ;idx2 LDA2 ADD2
+        clear_bit
 
-    &done (  stack: 00  )
-        POP2
-        JMP2r
+        ;place2 LDA2 INC2 ;place2 STA2
+        ,&loop JMP
 
+    &done
+    POP2
     JMP2r
-    @start1 0000
-    @alloc_sz1 $2
-    @end_alloc1 $2
+
+    @alloc_sz2 $2
+    @idx2 $2
+    @place2 $2
 
 
 @alloc_sz_is_free_at_idx (  idx* alloc_sz* -: b  )
