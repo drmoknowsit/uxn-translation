@@ -42,32 +42,31 @@ JMP2r
 
 
 
-@claim_alloc_sz_at_idx ( idx* alloc_sz* -: )
-    ;alloc_sz2 STA2 .idx STZ2
-    ;alloc_sz2 LDA2 ;end_alloc2 STA2k ( alloc_sz loaded, stored at end_alloc and kept on stack )
-    ;start2 LDA2 NEQ ,&loop JCN ,&done JMP    ( stack: 01 or 00, if 01 jump to loop, else jump to done )
+@claim_alloc_sz_at_idx ( idx* alloc_sz* -- )
+    ;alloc_sz3 STA2      ( store alloc size )
+    ;idx3 STA2           ( store starting idx in .idx )
+    #0000 ;jj STA2      ( loop counter jj = 0 )
 
-    &loop  ( stack: 01 )
-        POP2 ( stack:  )
-        .idx LDZ2
-        set_bit ( stack:  )
-       .idx LDZ2 INC2 .idx STZ2 ( stack:  )
-        ;end_alloc2 LDA2 ;start2 LDA2 #0001 ADD2 ;start2 STA2k ( stack: end_alloc start position incremented )
-        NEQ ,&loop JCN  ( stack: 01 or 00, if 01 jump to loop, else jump to all_set )
-        ,&all_set JMP
+&loop
+    ;jj LDA2
+    ;alloc_sz3 LDA2
+    EQU2 ,&done JCN     ( if jj >= alloc_sz, jump to done )
 
-    &all_set ( stack:  00 )
-        POP2
-        JMP2r
+    POP2
+    ;idx3 LDA2
+    ;jj LDA2 ADD2      ( idx + jj )
+    set_bit             ( call set_bit with idx + jj )
 
-    &done ( stack: 00 )
-        POP2
-        JMP2r
+    ;jj LDA2 INC2 ;jj STA2  ( jj += 1 )
+    ,&loop JMP
 
-    JMP2r
-    @start2 0000
-    @alloc_sz2 $2
-    @end_alloc2 $2
+&done
+POP2
+JMP2r
+
+@alloc_sz3 $2
+@idx3      $2
+@jj       $2
 
 
 @alloc_sz_is_free_at_idx (  idx* alloc_sz* -: b  )

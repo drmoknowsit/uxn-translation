@@ -19,16 +19,16 @@ BRK
 JMP2r
 
 @free_alloc_sz_at_idx (  idx* alloc_sz* -:  )
-    ;alloc_sz STA2 .idx STZ2
-    ;alloc_sz LDA2 ;end_alloc STA2k (  alloc_sz loaded, stored at end_alloc and kept on stack  )
-    ;start LDA2 NEQ ,&loop JCN ,&done JMP    (  stack: 01 or 00, if 01 jump to loop, else jump to done  )
+    ;alloc_sz1 STA2 .idx STZ2
+    ;alloc_sz1 LDA2 ;end_alloc1 STA2k (  alloc_sz loaded, stored at end_alloc and kept on stack  )
+    ;start1 LDA2 NEQ ,&loop JCN ,&done JMP    (  stack: 01 or 00, if 01 jump to loop, else jump to done  )
 
     &loop  (  stack: 01  )
         POP2 (  stack:   )
         .idx LDZ2
         clear_bit (  stack:   )
         .idx LDZ2 INC2 .idx STZ2 (  stack:   )
-        ;end_alloc LDA2 ;start LDA2 #0001 ADD2 ;start STA2k (  stack: end_alloc start position incremented )
+        ;end_alloc1 LDA2 ;start1 LDA2 #0001 ADD2 ;start1 STA2k (  stack: end_alloc start position incremented )
         NEQ ,&loop JCN  (  stack:  01 or 00, if 01 jump to loop, else jump to all_clear  )
         ,&all_clear JMP
 
@@ -41,9 +41,47 @@ JMP2r
         JMP2r
 
     JMP2r
+    @start1 0000
+    @alloc_sz1 $2
+    @end_alloc1 $2
+
+
+@alloc_sz_is_free_at_idx (  idx* alloc_sz* -: b  )
+    ;alloc_sz STA2 .idx STZ2
+    ;alloc_sz LDA2 ;end_alloc STA2k (  alloc_sz loaded, stored at end_alloc and kept on stack  )
+    (  snippet: if idx+jj>N_PAGES-1: error=4  )
+    N_PAGES #01 SUB GTH ,&ret_0_error4 JCN ,&next JMP (  stack: end_alloc N_PAGES-1 --> end_alloc N_PAGES-1 0 or 1  )
+    &next
+        POP2 POP2 POP2 (  stack: empty  )
+        ;end_alloc LDA2 ;start LDA2 NEQ ,&loop JCN ,&all_free JMP    (  stack: 01 or 00, if 01 jump to loop, else jump to all_free  )
+
+    &ret_0_error4
+        #04 .error STZ
+        POP2 POP2 POP2 #00 JMP2r
+
+    &loop  (  stack: 0000 end_alloc 01  )
+        get_bit EQU2 ,&not_free JCN .&next2 JMP (  stack: 0000 or 0001  )
+        &next2 ( stack: 0000  )
+            POP2 (  stack:  )
+            .idx LDZ2 INC2 .idx STZ2 (  stack:   )
+            ;end_alloc LDA2 ;start LDA2 #0001 ADD2 ;start STA2 (  stack: end_alloc start position incremented )
+            NEQ ,&loop JCN     (  stack: 01 or 00, if 01 jump to loop, else jump to all_free  )
+            ,&all_free JMP
+
+    &not_free (  stack: 01 )
+        POP2
+        #0000 (  stack: 00  )
+        JMP2r
+
+    &all_free (  stack: 00  )
+        POP2
+        #0001
+        JMP2r (  stack: 01  )
+    JMP2r
     @start 0000
     @alloc_sz $2
     @end_alloc $2
+
 
 
 @clear_bit (  idx --  )
@@ -108,6 +146,10 @@ JMP2r
 
 @N_PAGES #0100 JMP2r
 @bitmap $40
+
+
+@ws #2018 DEO JMP2r
+
 @print-bit #30 ADD #18 DEO JMP2r
 @nl #0a18 DEO JMP2r
 @print-str
