@@ -1,0 +1,47 @@
+@malloc ( n_bytes* -- <allocation in bytes> )
+    ( You are free to change this part but there should be no need )
+    #00 .error STZ
+    DUP2 ( n_bytes* n_bytes* )
+    DUP2 ( n_bytes* n_bytes* n_bytes* )
+    #0000 NEQ2 ,&cont1 JCN
+        POP2 POP2
+        #01 .error STZ
+        #0000 JMP2r
+    &cont1 ( n_bytes* n_bytes* )
+    #0001 SUB2 PAGE_SZ DIV2 #0001 ADD2 .n_pages STZ2 ( n_bytes* n_pages = ((n_bytes-1) // PAGE_SZ) + 1 )
+    .n_pages LDZ2 N_PAGES GTH2 not ,&cont2 JCN ( n_pages>N_PAGES )
+        POP2
+        #07 .error STZ
+        #0000 JMP2r
+    &cont2
+    #0000 ;&idx STA2 ( n_bytes* ) ( idx=0 )
+
+    ( loop over idx )
+
+    &loop
+        ;&idx LDA2 N_PAGES EQU2 ;&done JCN
+            ;&idx LDA2 .n_pages LDZ2
+            alloc_sz_is_free_at_idx
+            #0001 NEQ2 ;&next_idx JCN
+                .error LDZ #00 EQU ,&cont3 JCN
+                    POP2 #0000 JMP2r
+                &cont3
+                POP2
+                ;&idx LDA2 .n_pages LDZ2
+                claim_alloc_sz_at_idx
+                ;n_allocs LDA2 MAX_N_ALLOCS EQU2 ;&error5 JCN
+                    ;n_allocs LDA2 INC2 ;n_allocs STA2
+                    insert-ptr POP
+                    JMP2r
+            &next_idx
+                ;&idx LDA2 INC2 ;&idx STA2
+                ;&loop JMP
+          &done
+            POP2 #0000
+            JMP2r
+        &error5
+            POP2
+            #05 .error STZ
+            #0000 JMP2r
+    JMP2r
+    &idx $2
