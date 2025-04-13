@@ -72,7 +72,6 @@ JMP2r
         POP2
         #0001
         JMP2r
-
 @idx1 $2
 @place $2
 @alloc_sz1 $2

@@ -1,72 +1,17 @@
-
-
 |0000
-@idx $2
-@bit_idx $2
-@error $1 ( this should be last )
+@error $1
 
+|0100
+( unit tests )
 
-|100
-;test-claim_alloc_sz_at_idx JSR2
+set-bitmap-B
+
+test-alloc_sz_is_free_at_idx
+
 BRK
 
-
-@test-claim_alloc_sz_at_idx ( -- )
-    { 002d "Test 20 "for 20 "claim_alloc_sz_at_idx(idx,alloc_sz) 0a } STH2r print-str
-    ( claim alloc of 1,2,3,4,5 starting at 0 )
-    ;bitmap LDA2 STH2 ( stash first 2 bytes )
-    { 0006 "part1 0a } STH2r print-str
-    #0000 ;bitmap STA2 ( clear the bitmap's first 2 bytes )
-   ( print-bitmap nl )
-    #0000 #0001 claim_alloc_sz_at_idx ( 1000 000 )
-    ;bitmap LDA DUP print8 ws #80 EQU print-bit nl ( OK )
-    #0001 #0002 claim_alloc_sz_at_idx ( 1110 0000, is 1100 0000 )
-    ;bitmap LDA DUP print8 ws #e0 EQU print-bit nl ( c0 instead of e0, i.e. 1100 0000 i.o. 1110 0000  )
-    #0003 #0003 claim_alloc_sz_at_idx ( 1111 1100, is 1101 1100 )
-    ;bitmap LDA DUP print8 ws #fc EQU print-bit nl
-    #0006 #0004 claim_alloc_sz_at_idx ( 1111 1111 1100 0000 , is 1101 1111 1000 0000 )
-    ;bitmap LDA DUP print8 ws
-    ;bitmap INC LDA DUP print8 ws #ffc0 EQU2 print-bit nl
-    #000a #0005 claim_alloc_sz_at_idx ( 1111 1111 1111 1110 , is 1101 1111 1010 1010 )
-    ;bitmap LDA DUP print8 ws
-    ;bitmap INC LDA DUP print8 ws #fffe EQU2 print-bit nl
-    ( restore to previous state )
-    STH2r ;bitmap STA2
-    { 0006 "part2 0a } STH2r print-str
-    #006c #0010 claim_alloc_sz_at_idx
-    #007c #0010 alloc_sz_is_free_at_idx #01 EQU print-bit nl
-    #006c #0010 alloc_sz_is_free_at_idx #00 EQU print-bit nl
-JMP2r
-
-
-
-@claim_alloc_sz_at_idx ( idx* alloc_sz* -- )
-    ;alloc_sz3 STA2
-    ;idx3 STA2
-    #0000 ;place3 STA2
-
-    &loop
-        ;place3 LDA2
-        ;alloc_sz3 LDA2
-        EQU2 ,&done JCN
-
-        POP2
-        ;place3 LDA2 ;idx3 LDA2 ADD2
-        set_bit
-
-        ;place3 LDA2 INC2 ;place3 STA2
-        ,&loop JMP
-
-    &done
-    POP2
-    JMP2r
-
-    @alloc_sz3 $2
-    @idx3 $2
-    @place3 $2
-
-
-@alloc_sz_is_free_at_idx ( idx* alloc_sz* -- b )
+( define your tests here )
+ @alloc_sz_is_free_at_idx ( idx* alloc_sz* -- b )
     ;alloc_sz1 STA2
     ;idx1 STA2
     #0000 ;place STA2
@@ -87,7 +32,7 @@ JMP2r
                 POP2
                 #00
                 JMP2r
-       &cont1
+&cont1
             POP2
             ;place LDA2 INC2 ;place STA2 ,&loop JMP
 
@@ -99,7 +44,6 @@ JMP2r
 @idx1 $2
 @place $2
 @alloc_sz1 $2
-
 
 
 
@@ -119,31 +63,59 @@ JMP2r
 &byte $1
 
 
-
-@set_bit ( idx -- )
-;&idx STA2
-;&idx LDA2
-#03 SFT2 ;&byte_idx STA2
-#0007 ;&idx LDA2 ;&byte_idx LDA2 #30 SFT2 ADD2 SUB2 ;&bit_idx STA2
-;bitmap ;&byte_idx LDA2 ADD2 LDA ;&byte STA
-
-;&byte LDA ;&bit_idx LDA2 mask_set ORA ;bitmap ;&byte_idx LDA2 ADD2  STA ( stack:  ) ( load byte needed do or with mask so whole byte is correct then store it )
+@test-alloc_sz_is_free_at_idx ( -- )
+    { 002f "Test 20 "for 20 "alloc_sz_is_free_at_idx(idx,alloc_sz) 0a } STH2r print-str
+( All 0 )
+    { 0006 "part1 0a } STH2r print-str
+     #000f #0001 alloc_sz_is_free_at_idx #00 EQU print-Python-bool nl
+     #000f #0002 alloc_sz_is_free_at_idx #00 EQU print-Python-bool nl
+     #000f #0004 alloc_sz_is_free_at_idx #00 EQU print-Python-bool nl
+     #000f #0008 alloc_sz_is_free_at_idx #00 EQU print-Python-bool nl
+     #000f #0010 alloc_sz_is_free_at_idx #00 EQU print-Python-bool nl
+     { 0006 "part2 0a } STH2r print-str
+( Last is 0 because 24 is set )
+     #0010 #0001 alloc_sz_is_free_at_idx #01 EQU print-Python-bool nl
+     #0010 #0002 alloc_sz_is_free_at_idx #01 EQU print-Python-bool nl
+     #0010 #0004 alloc_sz_is_free_at_idx #01 EQU print-Python-bool nl
+     #0010 #0008 alloc_sz_is_free_at_idx #01 EQU print-Python-bool nl
+     #0010 #0010 alloc_sz_is_free_at_idx #00 EQU print-Python-bool nl
+     { 0006 "part3 0a } STH2r print-str
+( 11100 because 24 is set )
+     #0011 #0001 alloc_sz_is_free_at_idx #01 EQU print-Python-bool nl
+     #0011 #0002 alloc_sz_is_free_at_idx #01 EQU print-Python-bool nl
+     #0011 #0004 alloc_sz_is_free_at_idx #01 EQU print-Python-bool nl
+     #0011 #0008 alloc_sz_is_free_at_idx #00 EQU print-Python-bool nl
+     #0011 #0010 alloc_sz_is_free_at_idx #00 EQU print-Python-bool nl
+     { 0006 "part4 0a } STH2r print-str
+( All one )
+    #006c #0001 alloc_sz_is_free_at_idx #01 EQU print-Python-bool nl
+    #006c #0002 alloc_sz_is_free_at_idx #01 EQU print-Python-bool nl
+    #006c #0004 alloc_sz_is_free_at_idx #01 EQU print-Python-bool nl
+    #006c #0008 alloc_sz_is_free_at_idx #01 EQU print-Python-bool nl
+    #006c #0010 alloc_sz_is_free_at_idx #01 EQU print-Python-bool nl
 JMP2r
 
-&idx $2
-&byte_idx $2
-&bit_idx $2
-&byte $1
 
 
-
-
-
-@mask_set ( bit_idx* -: mask )
-.bit_idx STZ2
-#01 .bit_idx LDZ2 NIP #40 SFT SFT
+@set-bitmap-A
+    #01 ;bitmap #0001 ADD2 STA
+    #80 ;bitmap #0003 ADD2 STA
+    #02 ;bitmap #0004 ADD2 STA
+    #60 ;bitmap #0008 ADD2 STA
+    #04 ;bitmap #000c ADD2 STA
+    #20 ;bitmap #000d ADD2 STA
 JMP2r
 
+@set-bitmap-B
+    #03 ;bitmap #0001 ADD2 STA ( positions: 16=0,15=1 )
+    #c0 ;bitmap #0003 ADD2 STA ( positions: 24=1,25=1 )
+    #07 ;bitmap #0004 ADD2 STA ( positions: 37=1,38=1 )
+    #60 ;bitmap #0008 ADD2 STA ( positions: 65=0,66=1 )
+    #0e ;bitmap #000c ADD2 STA ( positions: 100=1,101=1 )
+    #30 ;bitmap #000d ADD2 STA ( position: 106=1,107=1 )
+JMP2r
+
+( ==================================================== )
 
 @N_PAGES #0100 JMP2r
 @bitmap $20
@@ -151,7 +123,7 @@ JMP2r
 @nl #0a18 DEO JMP2r
 @ws #2018 DEO JMP2r
 
-@not #01 SWP SUB JMP2r
+
 @print8 ( b -: )
     DUP ( b b )
     lonib ( b ln )
@@ -164,14 +136,14 @@ JMP2r
 
 @proc-n-items-from-ws
     ROT STHk ( x_1 ... x_n ;proc* n | n )
-    &loop
+&loop
         #00 EQU ?&end ( x_1 ... x_n ;proc* | n )
         STH2k ( x_1 ... x_n ;proc* | n ;proc* )
         JSR2 ( x_1 ... x_n-1 | n ;proc* )
         STH2r ( x_1 ... x_n-1 ;proc* | n )
         STHr #01 SUB STHk ( x_1 ... x_n-1 ;proc* n-1 | n-1 )
     !&loop
-    &end
+&end
     POPr
     POP2
 JMP2r
@@ -183,7 +155,7 @@ JMP2r
 @hinib ( a -: b )
     #04 SFT
     JMP2r
-
+@not #01 SWP SUB JMP2r
 
 @write-string ( {str}* unit -- )
 	STH
@@ -191,7 +163,7 @@ JMP2r
     SWP2 ( len str )
     INC2 INC2 DUP2  ( len str+2 str+2 )
     ROT2 ADD2 SWP2 ( str+2+len str+2 )
-    &l ( -- )
+&l ( -- )
     LDAk STHrk DEO
         INC2 GTH2k ?&l
         POP2 POP2
@@ -207,17 +179,17 @@ JMP2r
 @n-dec-digits-in-short
     DUP2 #0000 EQU2 ?&is_zero
     #2710 #0005 ( x:16 d:16 n:16 )
-    &loop
+&loop
     ROT2 ROT2 ( n:16 x:16 d:16 )
     DIV2k ( n:16 x:16 d:16 x/d:16 )
     #0000 NEQ2 ?&done_loop ( n:16 x:16 d:16 )
         #000a DIV2 ( n:16 x:16 d/10:16  )
         ROT2 #0001 SUB2 ( x:16 d/10:16 n-1:16 )
         !&loop
-    &is_zero
+&is_zero
         #01
         JMP2r
-    &done_loop
+&done_loop
         POP2 POP2 NIP ( n:8 )
 JMP2r
 
@@ -226,7 +198,7 @@ JMP2r
     DUP #01 EQU ?&done ( only one digit => done )
     ,&n-dig STR ( more than one, store it in n-dig )
     #01 ( x:16 1:8 ) ( d[0] xd10 2 )
-    &loop
+&loop
     ROT ROT ( 1 x ) ( d[0] 2 xd10 )
     DUP2 ( ct:8 x:16 x:16 ) ( 1 x x ) ( d[0] 2 xd10 xd10 )
     #000a DIV2 DUP2 ( ct:8 x:16 xd10:16 xd10:16 )
@@ -242,7 +214,7 @@ JMP2r
     ( #05  )
     LIT &n-dig $1
     LTH ?&loop ( dl[0]:8 xd10:16 2:8 )
-    &done
+&done
     ROT ROT NIP #30 ADD SWP
 JMP2r
 
@@ -279,5 +251,10 @@ JMP2r
     ADD ( h+(1-(h<10))*0x57 + (h<10)*0x30 )
     JMP2r
 
-
-
+@print-Python-bool
+,&true JCN
+{ 0005 "False } STH2r print-str
+JMP2r
+&true
+{ 0004 "True } STH2r print-str
+JMP2r

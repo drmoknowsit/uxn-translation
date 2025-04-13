@@ -8,6 +8,19 @@
 @nl #0a18 DEO JMP2r
 @ws #2018 DEO JMP2r
 
+@0x LIT2 "x0 #18 DEO #18 DEO JMP2r
+@hr LIT2 "-- #18 DEO #18 DEO LIT2 "-- #18 DEO #18 DEO #0a18 DEO JMP2r
+
+( b -- )
+@print-Python-bool
+,&true JCN
+{ 0005 "False } STH2r print-str
+JMP2r
+&true
+{ 0004 "True } STH2r print-str
+JMP2r
+
+
 @print16-dec 
     !print-int
 
